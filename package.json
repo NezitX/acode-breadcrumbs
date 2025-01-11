@@ -1,9 +1,16 @@
 {
   "name": "acode-breadcrumbs",
   "version": "1.0.0",
-  "description": "Template for Acode plugin",
+  "description": "Acode Plugin",
   "main": "src/main.js",
-  "repository": "https://github.com/Acode-Foundation/acode-plugin.git",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NezitX/acode-breadcrumbs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NezitX/acode-breadcrumbs/issues"
+  },
+  "homepage": "https://github.com/NezitX/acode-breadcrumbs#readme",
   "author": "NezitX",
   "license": "MIT",
   "dependencies": {
