@@ -1,0 +1,25 @@
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: 1rem;
+  background: var(--primary-color);
+  color: var(--primary-text-color);
+  padding: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.7rem;
+
+  .breadcrumb-class {
+    color: #4ec9b0;
+  }
+
+  .breadcrumb-function {
+    color: #dcdcaa;
+  }
+
+  .breadcrumb-global,
+  .breadcrumb-separator {
+    opacity: 0.5;
+  }
+}
