@@ -21,6 +21,7 @@ export default class Breadcrumbs {
       `<span class="breadcrumb-global">Global Scope</span>`;
     this.sepraterScopeUI = () =>
       `<span class="breadcrumb-seprater icon keyboard_arrow_right"></span>`;
+    this.ellipsisScopeUI = () => `<span class="breadcrumb-ellipsis">•••</span>`;
     this.classScopeUI = name => `<span class="breadcrumb-class">${name}</span>`;
     this.functionScopeUI = name =>
       `<span class="breadcrumb-function">${name}</span>`;
@@ -216,9 +217,77 @@ export default class Breadcrumbs {
   updateBreadcrumbs() {
     if (!this.isLanguageSupported(this.currentLanguage))
       return this.hideBreadcrumbs();
+
     const currentScope = this.findCurrentScope();
+    if (!currentScope) {
+      this.$el.innerHTML = `<div class="breadcrumbs-content">${this.globalScopeUI()}</div>`;
+      if (this.isHidden) this.showBreadcrumbs();
+      return;
+    }
+
+    const scopeChain = this.getScopeChain(currentScope);
+    const getMeasuredWidth = (measureDiv, html) => {
+      measureDiv.innerHTML = html;
+      return measureDiv.offsetWidth;
+    };
+
+    const measureDiv = document.createElement("div");
+    measureDiv.style.visibility = "hidden";
+    measureDiv.style.position = "absolute";
+    document.body.appendChild(measureDiv);
+
+    const containerWidth = this.$el.offsetWidth;
+    const ellipsisWidth = getMeasuredWidth(measureDiv, "...") + 10; // Add some padding
+    const separatorWidth = getMeasuredWidth(measureDiv, this.sepraterScopeUI());
+
+    const scopeWidths = scopeChain.map(scope => {
+      const element =
+        scope.type === "class"
+          ? this.classScopeUI(scope.name)
+          : this.functionScopeUI(scope.name);
+      return getMeasuredWidth(measureDiv, element);
+    });
+
+    let totalWidth = 0;
+    let visibleScopesCount = 0;
+    let needsEllipsis = false;
+
+    for (let i = scopeChain.length - 1; i >= 0; i--) {
+      const currentWidth =
+        scopeWidths[i] + (visibleScopesCount > 0 ? separatorWidth : 0);
+
+      if (
+        totalWidth + currentWidth + (i > 0 ? ellipsisWidth : 0) <=
+        containerWidth
+      ) {
+        totalWidth += currentWidth;
+        visibleScopesCount++;
+      } else {
+        needsEllipsis = i > 0;
+        break;
+      }
+    }
+
+    measureDiv.remove();
+
+    const visibleScopes = scopeChain.slice(-visibleScopesCount);
     const breadcrumbs = [];
 
+    if (needsEllipsis) {
+      breadcrumbs.push(this.ellipsisScopeUI());
+    }
+
+    visibleScopes.forEach((scope, index) => {
+      if (index > 0 || needsEllipsis) {
+        breadcrumbs.push(this.sepraterScopeUI());
+      }
+      breadcrumbs.push(
+        scope.type === "class"
+          ? this.classScopeUI(scope.name)
+          : this.functionScopeUI(scope.name)
+      );
+    });
+    /*
     if (currentScope) {
       const scopeChain = this.getScopeChain(currentScope);
       scopeChain.forEach(scope => {
@@ -229,11 +298,10 @@ export default class Breadcrumbs {
         );
       });
     }
-
-    this.$el.innerHTML =
-      breadcrumbs.length > 0
-        ? breadcrumbs.join(this.sepraterScopeUI())
-        : this.globalScopeUI();
+*/
+    this.$el.innerHTML = `<div class="breadcrumbs-content">
+      ${breadcrumbs.length > 0 ? breadcrumbs.join("") : this.globalScopeUI()}
+    </div>`;
 
     if (this.isHidden) this.showBreadcrumbs();
   }
@@ -245,5 +313,17 @@ export default class Breadcrumbs {
     this.scopes = [];
     this.scopeMap.clear();
     this.parsers.clear();
+  }
+}
+
+function kkkkksw() {
+  function dhjwiwjkw() {
+    function dnjwkwkkssk() {
+      function jdjsjsjwjwkwk() {
+        function djejiwiwkwjwjejejjdjjd() {
+          class tehsjjwwj {}
+        }
+      }
+    }
   }
 }
