@@ -25,6 +25,14 @@
     color: #dcdcaa;
   }
 
+  [data-row] {
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
   .breadcrumb-global,
   .breadcrumb-ellipsis,
   .breadcrumb-separator {

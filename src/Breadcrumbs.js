@@ -1,6 +1,17 @@
 import LanguagesConfig from "./config.js";
 
 export default class Breadcrumbs {
+  static UI = {
+    global: () => `<span class="breadcrumb-global">Global Scope</span>`,
+    seprater: () =>
+      `<span class="breadcrumb-seprater icon keyboard_arrow_right"></span>`,
+    ellipsis: () => `<span class="breadcrumb-ellipsis">•••</span>`,
+    class: ({ name, startRow }) =>
+      `<span class="breadcrumb-class" data-row="${startRow}">${name}</span>`,
+    function: ({ name, startRow }) =>
+      `<span class="breadcrumb-function" data-row="${startRow}">${name}</span>`
+  };
+
   constructor() {
     this.editor = editorManager.editor;
     this.scopes = [];
@@ -9,35 +20,23 @@ export default class Breadcrumbs {
     this.currentLanguage = null;
     this.parsers = new Map();
     this.$scripts = new Map();
+    this.disabled = false;
 
-    this.setupUI();
-  }
-
-  setupUI() {
     this.$el = document.createElement("div");
     this.$el.className = "breadcrumbs";
-
-    this.globalScopeUI = () =>
-      `<span class="breadcrumb-global">Global Scope</span>`;
-    this.sepraterScopeUI = () =>
-      `<span class="breadcrumb-seprater icon keyboard_arrow_right"></span>`;
-    this.ellipsisScopeUI = () => `<span class="breadcrumb-ellipsis">•••</span>`;
-    this.classScopeUI = name => `<span class="breadcrumb-class">${name}</span>`;
-    this.functionScopeUI = name =>
-      `<span class="breadcrumb-function">${name}</span>`;
   }
 
   get isHidden() {
     return document.querySelector(".breadcrumbs") === null;
   }
 
-  showBreadcrumbs() {
-    if (!this.isHidden) return;
+  show() {
+    if (!this.isHidden || this.disabled) return;
     const root = document.querySelector("#root");
     root.insertBefore(this.$el, root.querySelector("main"));
   }
 
-  hideBreadcrumbs() {
+  hide() {
     if (this.isHidden) return;
     this.$el.remove();
   }
@@ -76,11 +75,12 @@ export default class Breadcrumbs {
   }
 
   async updateLanguageParser() {
+    if (this.disabled) return;
     const mode = this.editor.session.getMode();
     const language = mode.$id?.split("/").pop();
 
-    if (!this.isLanguageSupported(language)) return this.hideBreadcrumbs();
-    this.hideBreadcrumbs();
+    if (!this.isLanguageSupported(language)) return this.hide();
+    this.hide();
 
     try {
       if (language !== this.currentLanguage) {
@@ -95,7 +95,8 @@ export default class Breadcrumbs {
   }
 
   updateScopeMap() {
-    if (!this.currentParser || !this.currentLanguage) return;
+    if (!this.currentParser || !this.currentLanguage || this.disabled) return;
+
     const config = LanguagesConfig[this.currentLanguage];
     if (!config) return;
 
@@ -215,13 +216,14 @@ export default class Breadcrumbs {
   }
 
   updateBreadcrumbs() {
-    if (!this.isLanguageSupported(this.currentLanguage))
-      return this.hideBreadcrumbs();
+    const { UI } = Breadcrumbs;
+    if (this.disabled) return;
+    if (!this.isLanguageSupported(this.currentLanguage)) return this.hide();
 
     const currentScope = this.findCurrentScope();
     if (!currentScope) {
-      this.$el.innerHTML = `<div class="breadcrumbs-content">${this.globalScopeUI()}</div>`;
-      if (this.isHidden) this.showBreadcrumbs();
+      this.$el.innerHTML = `<div class="breadcrumbs-content">${UI.global()}</div>`;
+      if (this.isHidden) this.show();
       return;
     }
 
@@ -238,13 +240,10 @@ export default class Breadcrumbs {
 
     const containerWidth = this.$el.offsetWidth;
     const ellipsisWidth = getMeasuredWidth(measureDiv, "...") + 10; // Add some padding
-    const separatorWidth = getMeasuredWidth(measureDiv, this.sepraterScopeUI());
+    const separatorWidth = getMeasuredWidth(measureDiv, UI.seprater());
 
     const scopeWidths = scopeChain.map(scope => {
-      const element =
-        scope.type === "class"
-          ? this.classScopeUI(scope.name)
-          : this.functionScopeUI(scope.name);
+      const element = UI[scope.type](scope);
       return getMeasuredWidth(measureDiv, element);
     });
 
@@ -263,7 +262,7 @@ export default class Breadcrumbs {
         totalWidth += currentWidth;
         visibleScopesCount++;
       } else {
-        needsEllipsis = i > 0;
+        needsEllipsis = i > 0 && scopeChain.length > 2;
         break;
       }
     }
@@ -274,36 +273,21 @@ export default class Breadcrumbs {
     const breadcrumbs = [];
 
     if (needsEllipsis) {
-      breadcrumbs.push(this.ellipsisScopeUI());
+      breadcrumbs.push(UI.ellipsis());
     }
 
     visibleScopes.forEach((scope, index) => {
       if (index > 0 || needsEllipsis) {
-        breadcrumbs.push(this.sepraterScopeUI());
+        breadcrumbs.push(UI.seprater());
       }
-      breadcrumbs.push(
-        scope.type === "class"
-          ? this.classScopeUI(scope.name)
-          : this.functionScopeUI(scope.name)
-      );
+      breadcrumbs.push(UI[scope.type](scope));
     });
-    /*
-    if (currentScope) {
-      const scopeChain = this.getScopeChain(currentScope);
-      scopeChain.forEach(scope => {
-        breadcrumbs.push(
-          scope.type === "class"
-            ? this.classScopeUI(scope.name)
-            : this.functionScopeUI(scope.name)
-        );
-      });
-    }
-*/
+
     this.$el.innerHTML = `<div class="breadcrumbs-content">
-      ${breadcrumbs.length > 0 ? breadcrumbs.join("") : this.globalScopeUI()}
+      ${breadcrumbs.length > 0 ? breadcrumbs.join("") : UI.global()}
     </div>`;
 
-    if (this.isHidden) this.showBreadcrumbs();
+    if (this.isHidden) this.show();
   }
 
   destroy() {
@@ -313,17 +297,5 @@ export default class Breadcrumbs {
     this.scopes = [];
     this.scopeMap.clear();
     this.parsers.clear();
-  }
-}
-
-function kkkkksw() {
-  function dhjwiwjkw() {
-    function dnjwkwkkssk() {
-      function jdjsjsjwjwkwk() {
-        function djejiwiwkwjwjejejjdjjd() {
-          class tehsjjwwj {}
-        }
-      }
-    }
   }
 }
