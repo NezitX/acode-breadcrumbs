@@ -1,11 +1,8 @@
 import plugin from "../plugin.json";
-import Breadcrumbs from "./Breadcrumbs.js";
 import style from "./style.scss";
+import { Breadcrumbs } from "./Breadcrumbs/index.js";
 
-// TODO:
-// 1. Add command/key binding hide/show breadcrumbs
-// 2. Add icon to class/function
-// 3. Better performance? (optional)
+// TODO: add key bindings to {DATA_STORAGE/.key-bindings.json}
 
 class AcodeBreadcrumbs {
   constructor() {
@@ -25,8 +22,61 @@ class AcodeBreadcrumbs {
     this.breadcrumbs = new Breadcrumbs();
     this.currentEditor = editorManager.editor;
 
+    this.setCommands();
     this.setEvents();
     document.head.append(this.$style);
+  }
+
+  getCommands() {
+    const bindKey = (win, mac) => ({ win, mac });
+    return [
+      {
+        name: "breadcrumbs:show",
+        description: "Show Breadcrumbs if exist in file",
+        bindKey: bindKey("Ctrl-Alt-B", "Ctrl-Alt-B"),
+        exec: async () => {
+          this.breadcrumbs.ui.show();
+        }
+      },
+      {
+        name: "breadcrumbs:hide",
+        description: "Hide Breadcrumbs if exist in file",
+        bindKey: bindKey("Ctrl-Shift-B", "Ctrl-Shift-B"),
+        exec: async () => {
+          this.breadcrumbs.ui.hide();
+        }
+      },
+      {
+        name: "breadcrumbs:enable",
+        description: "Enable Breadcrumbs",
+        bindKey: bindKey("Ctrl-Alt-P", "Ctrl-Alt-P"),
+        exec: async () => {
+          this.breadcrumbs.disabled = false;
+          this.breadcrumbs.updateLanguageParser();
+          this.breadcrumbs.updateBreadcrumbs();
+        }
+      },
+      {
+        name: "breadcrumbs:disable",
+        description: "Disable Breadcrumbs",
+        bindKey: bindKey("Ctrl-Shift-G", "Ctrl-Shift-G"),
+        exec: async () => {
+          this.breadcrumbs.disabled = true;
+          this.breadcrumbs.ui.hide();
+        }
+      }
+    ];
+  }
+
+  setCommands() {
+    const { commands } = this.currentEditor;
+    commands.addCommands(this.getCommands());
+  }
+
+  removeCommands() {
+    const { commands } = this.currentEditor;
+    commands.removeCommands(this.getCommands().map(c => c.name));
+    // this.commands.forEach(cmd => commands.removeCommand(cmd.name));
   }
 
   setEvents() {
@@ -37,7 +87,10 @@ class AcodeBreadcrumbs {
     );
     this.currentEditor.session?.on("changeMode", this.onSessionModeChange);
     editorManager.on("switch-file", this.onSwitchFile);
-    this.breadcrumbs.$el.addEventListener("click", this.onClickBreadcrumb);
+    this.breadcrumbs.ui.$container.addEventListener(
+      "click",
+      this.onClickBreadcrumb
+    );
   }
 
   removeEvents() {
@@ -48,7 +101,10 @@ class AcodeBreadcrumbs {
     );
     this.currentEditor.session?.off("changeMode", this.onSessionModeChange);
     editorManager.off("switch-file", this.onSwitchFile);
-    this.breadcrumbs.$el.removeEventListener("click", this.onClickBreadcrumb);
+    this.breadcrumbs.ui.$container.removeEventListener(
+      "click",
+      this.onClickBreadcrumb
+    );
   }
 
   async onSwitchFile() {
@@ -58,16 +114,16 @@ class AcodeBreadcrumbs {
     this.removeEvents();
     this.setEvents();
 
-    this.breadcrumbs.editor = this.currentEditor;
+    this.breadcrumbs.core.editor = this.currentEditor;
 
     await this.breadcrumbs.updateLanguageParser();
-    this.breadcrumbs.updateScopeMap();
+    this.breadcrumbs.core.updateScopeMap();
     this.breadcrumbs.updateBreadcrumbs();
   }
 
   onEditorChange() {
     if (!this.currentEditor) return;
-    this.breadcrumbs.updateScopeMap();
+    this.breadcrumbs.core.updateScopeMap();
     this.breadcrumbs.updateBreadcrumbs();
   }
 
@@ -95,6 +151,7 @@ class AcodeBreadcrumbs {
   }
 
   async destroy() {
+    this.removeCommands();
     this.removeEvents();
     this.breadcrumbs.destroy();
     this.$style.remove();
