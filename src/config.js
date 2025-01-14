@@ -1,3 +1,6 @@
+// TODO: Add more basic languages (python, c, java, ...)
+// NOTE: Sort by Alphabet
+
 export default {
   javascript: {
     parser: "acorn",
