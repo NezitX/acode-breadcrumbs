@@ -18,6 +18,7 @@ const zip = new jszip();
 zip.file('icon.png', fs.readFileSync(iconFile));
 zip.file('plugin.json', fs.readFileSync(pluginJSON));
 zip.file('readme.md', fs.readFileSync(readmeDotMd));
+zip.file('CHANGELOG.md', fs.readFileSync(path.join(__dirname, '../CHANGELOG.md')));
 
 loadFile('', distFolder);
 
