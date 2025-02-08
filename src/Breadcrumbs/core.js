@@ -17,9 +17,9 @@ export class BreadcrumbsCore {
 
     const captureMap = new Map();
     captures.forEach(capture => {
-      //if (capture.name.startsWith('definition')) {
+      if (capture.name.startsWith('definition')) {
         captureMap.set(capture.node.id, capture);
-      //}
+      }
     });
 
     const breadcrumbs = [];
