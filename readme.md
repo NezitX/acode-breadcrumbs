@@ -20,14 +20,6 @@ Breadcrumbs Plugin for Acode brings **breadcrumbs navigation** to the Acode edit
 
 ---
 
-## Notes  
-
-- **Language Support**:  
-  Currently, the plugin supports **JavaScript only**.  
-  If you want support for other languages, please contribute or stay tuned for future updates.
-
----
-
 ## Usage  
 
 You can control the Breadcrumbs Plugin through the **command palette** or the following keybindings:  
@@ -45,7 +37,6 @@ We welcome contributions to improve and expand the plugin! Here’s how you can 
 
 1. **Report Issues**: Submit bug reports or feature requests via the [issues](https://github.com/NezitX/acode-breadcrumbs/issues) section.  
 2. **Code Contributions**: Fork the repository, implement changes, and submit a pull request.  
-3. **Add Language Support**: Help expand functionality by adding support for more programming languages.  
 
 ---
 
