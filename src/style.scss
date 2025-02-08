@@ -7,43 +7,81 @@
   color: var(--primary-text-color);
   border-bottom: 1px solid var(--border-color);
   font-size: 0.7rem;
-  overflow: hidden;
-  max-width: 100%;
 
-  .breadcrumb-container {
+  .container {
     display: flex;
     align-items: center;
     height: 100%;
     width: 100%;
-    gap: 0.5rem;
+    gap: 0.25rem;
     padding: 0.25rem 0.5rem;
-
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    
     span {
       display: flex;
       align-items: center;
       justify-content: center;
       height: 100%;
       opacity: 0.5;
+      gap: 0.25rem;
+      min-width: 0;
+      flex-shrink: 0;
+      
+      &.crumb {
+        cursor: pointer;
 
-      &:hover:not(
-          .breadcrumb-ellipsis,
-          .breadcrumbs-seprater,
-          .breadcrumbs-global
-        ) {
-        opacity: 1;
+        &:hover {
+          opacity: 1;
+          text-decoration: underline;
+        }
+
+        .crumb-text {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
       }
     }
 
-    [data-row] {
-      cursor: pointer;
+    /* .crumb-ellipsis {
+      transform: rotate(90deg);
+      transform-origin: center;
+      width: 1rem;
+    } */
 
-      &:hover {
-        text-decoration: underline;
-      }
+    [class^='crumb-icon-'] {
+      opacity: 1 !important;
+      width: 1rem;
+      height: 1rem;
     }
 
-    .breadcrumb-ellipsis {
-      width: 2rem;
+    .crumb-icon-method {
+      background-image: url('./svg/symbol-method.svg');
+    }
+
+    .crumb-icon-variable {
+      background-image: url('./svg/symbol-variable.svg');
+    }
+
+    .crumb-icon-constant {
+      background-image: url('./svg/symbol-constant.svg');
+    }
+
+    .crumb-icon-class {
+      background-image: url('./svg/symbol-class.svg');
+    }
+
+    .crumb-icon-struct {
+      background-image: url('./svg/symbol-structure.svg');
+    }
+
+    .crumb-icon-enum {
+      background-image: url('./svg/symbol-enum.svg');
+    }
+
+    .crumb-icon-interface {
+      background-image: url('./svg/symbol-interface.svg');
     }
   }
 }

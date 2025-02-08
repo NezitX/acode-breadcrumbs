@@ -1,26 +1,27 @@
-import plugin from "../plugin.json";
-import style from "./style.scss";
-import { Breadcrumbs } from "./Breadcrumbs/index.js";
+import plugin from '../plugin.json';
+import style from './style.scss';
+import TreeSitter from './TreeSitter.js';
+import { Breadcrumbs } from './Breadcrumbs/index.js';
 
-// TODO: add key bindings to {DATA_STORAGE/.key-bindings.json}
+// TODO: add key bindings to {DATA_STORAGE/.key-bindings.json} file
 
 class AcodeBreadcrumbs {
   constructor() {
-    this.$style = document.createElement("style");
+    this.ts = new TreeSitter();
+    this.$style = document.createElement('style');
     this.$style.innerHTML = style;
 
     this.currentEditor = null;
 
-    this.onEditorChange = this.onEditorChange.bind(this);
-    this.onSelectionCursorChange = this.onSelectionCursorChange.bind(this);
-    this.onSessionModeChange = this.onSessionModeChange.bind(this);
+    this.onChange = this.onChange.bind(this);
     this.onSwitchFile = this.onSwitchFile.bind(this);
-    this.onClickBreadcrumb = this.onClickBreadcrumb.bind(this);
+    this.onClickCrumb = this.onClickCrumb.bind(this);
   }
 
   async init() {
-    this.breadcrumbs = new Breadcrumbs();
-    this.currentEditor = editorManager.editor;
+    await this.ts.init();
+    this.breadcrumbs = new Breadcrumbs(this.ts);
+    this.breadcrumbs.editor = this.currentEditor = editorManager.editor;
 
     this.setCommands();
     this.setEvents();
@@ -31,35 +32,34 @@ class AcodeBreadcrumbs {
     const bindKey = (win, mac) => ({ win, mac });
     return [
       {
-        name: "breadcrumbs:show",
-        description: "Show Breadcrumbs if exist in file",
-        bindKey: bindKey("Ctrl-Alt-B", "Ctrl-Alt-B"),
+        name: 'breadcrumbs:show',
+        description: 'Show Breadcrumbs if exist in file',
+        bindKey: bindKey('Ctrl-Alt-B', 'Ctrl-Alt-B'),
         exec: async () => {
-          this.breadcrumbs.ui.show();
+          this.breadcrumbs.updateBreadcrumbs();
         }
       },
       {
-        name: "breadcrumbs:hide",
-        description: "Hide Breadcrumbs if exist in file",
-        bindKey: bindKey("Ctrl-Shift-B", "Ctrl-Shift-B"),
+        name: 'breadcrumbs:hide',
+        description: 'Hide Breadcrumbs if exist in file',
+        bindKey: bindKey('Ctrl-Shift-B', 'Ctrl-Shift-B'),
         exec: async () => {
           this.breadcrumbs.ui.hide();
         }
       },
       {
-        name: "breadcrumbs:enable",
-        description: "Enable Breadcrumbs",
-        bindKey: bindKey("Ctrl-Alt-P", "Ctrl-Alt-P"),
+        name: 'breadcrumbs:enable',
+        description: 'Enable Breadcrumbs',
+        bindKey: bindKey('Ctrl-Alt-P', 'Ctrl-Alt-P'),
         exec: async () => {
           this.breadcrumbs.disabled = false;
-          this.breadcrumbs.updateLanguageParser();
           this.breadcrumbs.updateBreadcrumbs();
         }
       },
       {
-        name: "breadcrumbs:disable",
-        description: "Disable Breadcrumbs",
-        bindKey: bindKey("Ctrl-Shift-G", "Ctrl-Shift-G"),
+        name: 'breadcrumbs:disable',
+        description: 'Disable Breadcrumbs',
+        bindKey: bindKey('Ctrl-Shift-G', 'Ctrl-Shift-G'),
         exec: async () => {
           this.breadcrumbs.disabled = true;
           this.breadcrumbs.ui.hide();
@@ -76,84 +76,68 @@ class AcodeBreadcrumbs {
   removeCommands() {
     const { commands } = this.currentEditor;
     commands.removeCommands(this.getCommands().map(c => c.name));
-    // this.commands.forEach(cmd => commands.removeCommand(cmd.name));
   }
 
   setEvents() {
-    this.currentEditor.on("change", this.onEditorChange);
-    this.currentEditor.selection?.on(
-      "changeCursor",
-      this.onSelectionCursorChange
-    );
-    this.currentEditor.session?.on("changeMode", this.onSessionModeChange);
-    editorManager.on("switch-file", this.onSwitchFile);
-    this.breadcrumbs.ui.$container.addEventListener(
-      "click",
-      this.onClickBreadcrumb
-    );
+    // this.currentEditor.on('change', this.onChange);
+    this.currentEditor.selection?.on('changeCursor', this.onChange);
+    this.currentEditor.session?.on('changeMode', this.onChange);
+    editorManager.on('switch-file', this.onSwitchFile);
+    this.breadcrumbs.ui.$container.addEventListener('click', this.onClickCrumb);
   }
 
   removeEvents() {
-    this.currentEditor.off("change", this.onEditorChange);
-    this.currentEditor.selection?.off(
-      "changeCursor",
-      this.onSelectionCursorChange
-    );
-    this.currentEditor.session?.off("changeMode", this.onSessionModeChange);
-    editorManager.off("switch-file", this.onSwitchFile);
+    // this.currentEditor.off('change', this.onChange);
+    this.currentEditor.selection?.off('changeCursor', this.onChange);
+    this.currentEditor.session?.off('changeMode', this.onChange);
+    editorManager.off('switch-file', this.onSwitchFile);
     this.breadcrumbs.ui.$container.removeEventListener(
-      "click",
-      this.onClickBreadcrumb
+      'click',
+      this.onClickCrumb
     );
   }
 
-  async onSwitchFile() {
+  async onSwitchFile(e) {
+    this.breadcrumbs.ui.hide();
+    if (e.id === 'default-session') return;
+
     this.currentEditor = editorManager.editor;
     if (!this.currentEditor) return;
 
     this.removeEvents();
     this.setEvents();
 
-    this.breadcrumbs.core.editor = this.currentEditor;
-
-    await this.breadcrumbs.updateLanguageParser();
-    this.breadcrumbs.core.updateScopeMap();
-    this.breadcrumbs.updateBreadcrumbs();
+    this.breadcrumbs.editor = this.currentEditor;
+    await this.breadcrumbs.updateBreadcrumbs();
   }
 
-  onEditorChange() {
+  async onChange() {
     if (!this.currentEditor) return;
-    this.breadcrumbs.core.updateScopeMap();
-    this.breadcrumbs.updateBreadcrumbs();
+    await this.breadcrumbs.updateBreadcrumbs();
   }
 
-  onSessionModeChange() {
-    if (!this.currentEditor) return;
-    this.breadcrumbs.updateLanguageParser();
-  }
-
-  onSelectionCursorChange() {
-    if (!this.currentEditor) return;
-    this.breadcrumbs.updateBreadcrumbs();
-  }
-
-  onClickBreadcrumb(e) {
-    const target = e.target;
+  onClickCrumb(e) {
+    let target = e.target;
     if (
-      target.classList.contains("breadcrumb-class") ||
-      target.classList.contains("breadcrumb-function")
+      target.classList.contains('crumb-icon') ||
+      target.classList.contains('crumb-text')
     ) {
-      const row = parseInt(target.dataset.row);
-      if (isNaN(row)) return;
-      this.currentEditor.gotoLine(row + 1, 0);
-      this.currentEditor.focus();
+      target = target.parentElement;
     }
+
+    if (!target.classList.contains('crumb')) return;
+    const row = parseInt(target.dataset.row);
+    const column = parseInt(target.dataset.column) || 0;
+    if (isNaN(row)) return;
+
+    this.currentEditor.gotoLine(row + 1, column + 1);
+    this.currentEditor.focus();
   }
 
   async destroy() {
     this.removeCommands();
     this.removeEvents();
-    this.breadcrumbs.destroy();
+    await this.breadcrumbs.destroy();
     this.$style.remove();
 
     this.currentEditor = null;
@@ -165,7 +149,7 @@ if (window.acode) {
   acode.setPluginInit(
     plugin.id,
     async (baseUrl, $page, { cacheFileUrl, cacheFile }) => {
-      acodePlugin.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+      acodePlugin.baseUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
       await acodePlugin.init($page, cacheFile, cacheFileUrl);
     }
   );

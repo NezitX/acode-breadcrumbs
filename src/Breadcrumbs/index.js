@@ -1,49 +1,33 @@
-import { BreadcrumbsUI } from "./ui.js";
-import { BreadcrumbsCore } from "./core.js";
+import { BreadcrumbsUI } from './ui.js';
+import { BreadcrumbsCore } from './core.js';
 
 export class Breadcrumbs {
-  constructor() {
+  editor;
+  disabled = false;
+
+  constructor(ts) {
     this.ui = new BreadcrumbsUI();
-    this.core = new BreadcrumbsCore();
-
-    this.disabled = false;
+    this.core = new BreadcrumbsCore(ts);
   }
 
-  async updateLanguageParser() {
+  async updateBreadcrumbs() {
     if (this.disabled) return;
-    const mode = this.core.editor.session.getMode();
-    const language = mode.$id?.split("/").pop();
+    const lang = this.editor.session.$modeId.split('/').pop();
+    const code = this.editor.session.getValue();
+    const position = this.editor.getCursorPosition();
 
-    if (!this.core.isLanguageSupported(language)) return this.ui.hide();
-    this.ui.hide();
+    const breadcrumbs = await this.core.generateBreadcrumbs(
+      lang,
+      code,
+      position
+    );
 
-    try {
-      if (language !== this.core.currentLanguage) {
-        this.core.currentParser = await this.core.loadParser(language);
-        this.core.currentLanguage = language;
-      }
-
-      this.core.updateScopeMap();
-    } catch (error) {
-      console.error(`Failed to load parser for ${language}:`, error);
-    }
+    if (!breadcrumbs) return;
+    this.ui.renderBreadcrumbs(breadcrumbs);
   }
 
-  updateBreadcrumbs() {
-    if (this.disabled) return;
-    if (!this.core.isLanguageSupported(this.core.currentLanguage)) {
-      return this.ui.hide();
-    }
-
-    const currentScope = this.core.findCurrentScope();
-    const scopeChain = currentScope
-      ? this.core.getScopeChain(currentScope)
-      : null;
-    this.ui.renderBreadcrumbs(scopeChain);
-  }
-  
-  destroy() {
-    this.ui.destroy();
-    this.core.destroy();
+  async destroy() {
+    await this.core.destroy();
+    await this.ui.destroy();
   }
 }

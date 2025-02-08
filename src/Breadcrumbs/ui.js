@@ -1,26 +1,28 @@
-// TODO: Add IntelliSense icons 
-// TODO: Handle more scopes (variables, ...) ui
-// TODO: Handle syntax errors ui
-
 export class BreadcrumbsUI {
-  constructor() {
-    this.$el = document.createElement("div");
-    this.$el.className = "breadcrumbs";
+  #cachedIcons = new Map();
 
-    this.$container = document.createElement("div");
-    this.$container.className = "breadcrumb-container";
+  constructor() {
+    this.$el = document.createElement('div');
+    this.$el.className = 'breadcrumbs';
+
+    this.$container = document.createElement('div');
+    this.$container.className = 'container';
 
     this.$el.appendChild(this.$container);
+
+    this.$separator = this.#createSeparator();
   }
 
   get isHidden() {
-    return !document.querySelector(".breadcrumbs");
+    return !this.$el.isConnected;
   }
 
   show() {
     if (!this.isHidden) return;
-    const root = document.querySelector("#root");
-    root && root.insertBefore(this.$el, root.querySelector("main"));
+    requestAnimationFrame(() => {
+      const root = document.querySelector('#root');
+      if (root) root.insertBefore(this.$el, root.querySelector('main'));
+    });
   }
 
   hide() {
@@ -29,119 +31,102 @@ export class BreadcrumbsUI {
   }
 
   renderBreadcrumbs(scopeChain) {
-    if (!scopeChain || scopeChain.length === 0) {
-      this.$container.innerHTML = this.getScopeElement("global");
-      if (this.isHidden) this.show();
+    if (!scopeChain?.length) {
+      const globalScope = this.#getScopeElement('global');
+      this.$container.replaceChildren(globalScope);
+      this.show();
       return;
     }
 
-    const getMeasuredWidth = (measureDiv, html) => {
-      measureDiv.innerHTML = html;
-      return measureDiv.offsetWidth;
-    };
-
-    const measureDiv = document.createElement("div");
-    measureDiv.style.visibility = "hidden";
-    measureDiv.style.position = "absolute";
-    document.body.appendChild(measureDiv);
-
-    const containerWidth = this.$el.offsetWidth;
-    const ellipsisWidth = getMeasuredWidth(measureDiv, "•••") + 2; // Add some padding
-    const separatorWidth = getMeasuredWidth(
-      measureDiv,
-      this.getScopeElement("seprater")
-    );
-
-    const scopeWidths = scopeChain.map(scope => {
-      const element = this.getScopeElement(scope.type, scope);
-      return getMeasuredWidth(measureDiv, element);
+    const fragment = document.createDocumentFragment();
+    scopeChain.forEach((scope, index) => {
+      if (index > 0) fragment.appendChild(this.$separator.cloneNode(true));
+      fragment.appendChild(this.#getScopeElement(scope.type, scope));
     });
 
-    let totalWidth = 0;
-    let visibleScopesCount = 0;
-    let needsEllipsis = false;
+    this.$container.replaceChildren(fragment);
+    this.show();
 
-    for (let i = scopeChain.length - 1; i >= 0; i--) {
-      const currentWidth =
-        scopeWidths[i] + (visibleScopesCount > 0 ? separatorWidth : 0);
-
-      if (
-        totalWidth + currentWidth + (i > 0 ? ellipsisWidth : 0) <=
-        containerWidth
-      ) {
-        totalWidth += currentWidth;
-        visibleScopesCount++;
-      } else {
-        needsEllipsis = i > 0 && scopeChain.length > 2;
-        break;
-      }
-    }
-
-    measureDiv.remove();
-
-    const visibleScopes = scopeChain.slice(-visibleScopesCount);
-    const breadcrumbs = [];
-
-    if (needsEllipsis) {
-      breadcrumbs.push(this.getScopeElement("ellipsis"));
-    }
-
-    visibleScopes.forEach((scope, index) => {
-      if (index > 0 || needsEllipsis) {
-        breadcrumbs.push(this.getScopeElement("seprater"));
-      }
-
-      breadcrumbs.push(this.getScopeElement(scope.type, scope));
+    requestAnimationFrame(() => {
+      this.$container.scrollTo({
+        left: this.$container.scrollWidth,
+        behavior: 'smooth'
+      });
     });
-
-    this.$container.innerHTML =
-      breadcrumbs.length > 0
-        ? breadcrumbs.join("")
-        : this.getScopeElement("global");
-
-    if (this.isHidden) this.show();
   }
 
-  getScopeElement(type, options) {
-    const span = document.createElement("span");
+  #createSeparator() {
+    const separator = document.createElement('span');
+    separator.className = 'crumb-seprater icon keyboard_arrow_right';
+    return separator;
+  }
 
-    switch (type) {
-      case "global":
-        span.className = "breadcrumb-global";
-        span.textContent = "GlobalScope";
-        break;
-
-      case "seprater":
-        span.classList.add(
-          "breadcrumb-seprater",
-          "icon",
-          "keyboard_arrow_right"
-        );
-        break;
-
-      case "ellipsis":
-        span.className = "breadcrumb-ellipsis";
-        span.textContent = "•••";
-        break;
-
-      case "class":
-        span.className = "breadcrumb-class";
-        span.dataset["row"] = options?.startRow;
-        span.innerHTML = options?.name;
-        break;
-
-      case "function":
-        span.className = "breadcrumb-function";
-        span.dataset["row"] = options?.startRow;
-        span.innerHTML = options?.name;
-        break;
+  #getScopeElement(type, options) {
+    if (type === 'global') {
+      const crumb = document.createElement('span');
+      crumb.className = 'crumb-global';
+      crumb.innerHTML = '<span class="crumb-text">GlobalScope</span>';
+      return crumb;
     }
 
-    return span.outerHTML;
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+
+    if (options) {
+      crumb.dataset.type = type;
+      crumb.dataset.row = options.row;
+      crumb.dataset.column = options.column;
+
+      const icon = this.#getIcon(type);
+      if (icon) crumb.appendChild(icon);
+
+      const textSpan = document.createElement('span');
+      textSpan.className = 'crumb-text';
+      textSpan.textContent = options.name || 'non';
+      crumb.appendChild(textSpan);
+    }
+
+    return crumb;
+  }
+
+  #getIcon(type) {
+    if (this.#cachedIcons.has(type)) {
+      return this.#cachedIcons.get(type).cloneNode(true);
+    }
+
+    const icon = document.createElement('span');
+
+    switch (type) {
+      case 'function':
+      case 'method':
+      case 'arrow':
+      case 'generator':
+        icon.className = 'crumb-icon-method';
+        break;
+      case 'variable':
+      case 'lexical':
+        icon.className = 'crumb-icon-variable';
+        break;
+      case 'constant':
+        icon.className = 'crumb-icon-constant';
+        break;
+      case 'class':
+      case 'struct':
+      case 'enum':
+      case 'interface':
+        icon.className = `crumb-icon-${type}`;
+        break;
+      default:
+        return null;
+    }
+
+    this.#cachedIcons.set(type, icon);
+    return icon.cloneNode(true);
   }
 
   destroy() {
+    this.#cachedIcons.clear();
     this.$el.remove();
+    this.$separator.remove();
   }
 }
-
