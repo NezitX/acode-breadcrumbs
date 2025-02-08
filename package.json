@@ -1,6 +1,6 @@
 {
   "name": "acode-breadcrumbs",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Acode Plugin",
   "main": "src/main.js",
   "repository": {
